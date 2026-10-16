@@ -22,14 +22,16 @@ edu/
 ## 教材下载
 
 ```bash
-# 首次/更新书目
+# smartedu 官方教材(语文/数学/英语沪教版等)
 python3 scripts/download_books.py --refresh
-
-# 批量下载(已有跳过, 签名头过期自动刷新)
 python3 scripts/download_books.py
-python3 scripts/download_books.py --stage 小学 --subject 数学
+
+# 上海低年级英语(牛津上海版, smartedu 不收录, 从 haoduoyun.cc)
+python3 scripts/download_haoduoyun_book.py <书页URL> <输出PDF>
 ```
 
-前置条件与原理详见 [scripts/README.md](scripts/README.md)。
+详见 [scripts/README.md](scripts/README.md)。
 
-当前已下载：小学 语文/数学/英语 20 本（数学三、四、五年级下册及英语下册平台未发布，待更新后增量下载）。
+当前已下载：
+- **小学语数英 24 本**：smartedu 官方 20 本（语文统编 1-5 年级全、数学沪教 1-5 年级上册、英语沪教 3-5 年级上册；数学/英语部分下册平台未发布）+ 牛津上海版英语 4 本（一二年级上下册）
+- 上海低年级英语说明：一、二年级用《九年义务教育课本·英语（牛津上海版）》（试用本，上海教育出版社），三年级起用新课标沪教版

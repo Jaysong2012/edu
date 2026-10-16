@@ -6,29 +6,42 @@
 
 ```
 edu/
-├── booklist.json              # 书目清单(contentId + PDF地址), 脚本自动维护
+├── booklist.json                    # smartedu 书目清单(contentId + PDF地址)
 ├── scripts/
-│   ├── download_books.py      # 批量下载主脚本
-│   └── README.md              # 本文档
-└── sh_edu/                    # 教材库: <学段>/<年级>/<学科>/<学科><年级><册次>.pdf
+│   ├── download_books.py            # smartedu 官方教材批量下载
+│   ├── download_haoduoyun_book.py   # 好多电子课本网(haoduoyun.cc)整本下载, 合成 PDF
+│   └── README.md                    # 本文档
+└── sh_edu/                          # 教材库: <学段>/<年级>/<学科>/xxx.pdf
 ```
 
 ## 使用方法
 
-**前置**：主浏览器(Chrome)已登录 basic.smartedu.cn 并保持运行。
+**脚本一：smartedu 官方教材**（前置：主浏览器已登录 basic.smartedu.cn 并保持运行）
 
 ```bash
-# 1. 首次/更新书目(从平台拉全量目录, 按 DEFAULT_FILTER 过滤)
-python3 scripts/download_books.py --refresh
-
-# 2. 批量下载(已有文件自动跳过, 签名头过期自动刷新)
-python3 scripts/download_books.py
-
-# 3. 只下某学段/学科
+python3 scripts/download_books.py --refresh          # 首次/更新书目
+python3 scripts/download_books.py                    # 全量下载(已有跳过)
 python3 scripts/download_books.py --stage 小学 --subject 数学
 ```
 
-改下载范围(比如加初中、换版本) → 编辑脚本里 `DEFAULT_FILTER` 后 `--refresh`。
+**脚本二：haoduoyun.cc 地方教材**（无需登录，上海低年级英语牛津上海版等 smartedu 不收录的书）
+
+```bash
+python3 scripts/download_haoduoyun_book.py <书目录页URL> <输出PDF>
+# 例: 牛津上海版一年级英语上册
+python3 scripts/download_haoduoyun_book.py \
+  'https://m.haoduoyun.cc/book/hjb/yingyu/jr1a.shtml' \
+  'sh_edu/小学/一年级/英语/英语一年级上册（牛津上海版）.pdf'
+```
+
+已下载的牛津上海版页面代码（沪教版 hjb/yingyu/ 下）：
+
+| 年级 | 上册 | 下册 |
+|---|---|---|
+| 一年级 | `jr1a` | `rk1b` |
+| 二年级 | `ky2a` | `jk2b` |
+
+注意：三~五年级英语用 smartedu 的沪教版(新课标)，低年级才是牛津上海版旧教材。
 
 ## 下载原理
 
@@ -45,15 +58,29 @@ python3 scripts/download_books.py --stage 小学 --subject 数学
 
 ## 踩坑记录
 
+### smartedu (download_books.py)
+
 | 坑 | 现象 | 原因/解法 |
 |---|---|---|
 | 直接 curl PDF 401 | `openresty 401 Authorization Required` | 缺 `x-nd-auth` 签名头；补头后即使 curl 也通 |
 | 加 Origin/Referer/Cookie 仍 401 | 各种伪装都过不去 | WAF 还校验请求指纹，别在头之外浪费时间，直接走签名头方案 |
-| `teach/api_static/trains/tchMaterial.json` 403 | curl 和浏览器都拿不到 | 该静态文件已废弃/收紧，用上面的 `ndrs/resources/tch_material/` 新路径 |
+| `teach/api_static/trains/tchMaterial.json` 403 | curl 和浏览器都拿不到 | 该静态文件已废弃/收紧，用 `ndrs/resources/tch_material/` 新路径 |
 | 页内 fetch PDF 偶尔 200 偶尔 401 | HEAD 通 GET 不通 | 没登录时只有部分请求侥幸过；登录态 + 签名头才稳定 |
-| 跨域 fetch 带 cookie 失败 | `TypeError: Failed to fetch` | CDN 域不带 CORS 凭证支持；用 pdfjs iframe(与主页面同源)读 `PDFViewerApplication.pdfDocument.getData()` 可以拿到整本字节——单本应急方案 |
-| 标签树解析只剩 9 条链 | 遍历提前断链 | 树的叶子在 `hierarchies[].children` 为空处，且同一 tag 的 `hierarchies` 列表可能既有子又有空，两层都要判 |
+| 跨域 fetch 带 cookie 失败 | `TypeError: Failed to fetch` | CDN 域不带 CORS 凭证；用 pdfjs iframe(同源)读 `PDFViewerApplication.pdfDocument.getData()` 可拿整本字节——单本应急方案 |
+| 标签树解析只剩 9 条链 | 遍历提前断链 | 叶子在 `hierarchies[].children` 为空处，同一 tag 的 `hierarchies` 可能既有子又有空，两层都要判 |
 | 下册缺文件 | 如数学三/四/五年级下册 | **平台没发布**，不是下载失败；`booklist.json` 里能看哪些有 `pdf_urls` |
+| 牛津上海版搜不到 | 全量目录 0 命中 | 国家平台不收录上海低年级英语地方教材(牛津上海版试用本)，走 haoduoyun 脚本 |
+
+### haoduoyun (download_haoduoyun_book.py)
+
+| 坑 | 现象 | 原因/解法 |
+|---|---|---|
+| 书目录页没有 totalPage | 解析不到总页数 | 变量在内页；脚本会先探测一个单元内页 |
+| 内页 URL 拼错 | 全部"无图片, 跳过" | 书目录页 `foo.shtml` 的内页在 `foo/{n}.shtml` 子目录，不是同级 |
+| 页面代码无规律 | 一上是 jr1a、一下是 rk1b、二上是 ky2a、二下是 jk2b | 不猜，用搜索引擎(site:haoduoyun.cc 书名)定位 |
+| 图片是压缩图 | mmbiz.qpic.cn 的 640 宽 | URL 里 `/640` 换 `/0` 得到 1280 宽原图 |
+| 页面 UA 检测 | 桌面 UA 会 302 跳主站 | 请求带手机 UA |
+| 图片来源不统一 | 有的书走 1010pic.com, 有的走微信 CDN | 脚本按 `ebookPage('URL')` 逐页取，不依赖单一域名 |
 
 ## 标签维度速查
 
