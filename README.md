@@ -13,10 +13,9 @@
 edu/
 ├── README.md
 ├── booklist.json       # smartedu 书目清单(contentId + PDF 地址), 由脚本维护
-├── scripts/
-│   ├── download_books.py   # 教材批量下载脚本
-│   └── README.md           # 下载原理 + 踩坑记录
-└── sh_edu/             # 教材库(gitignore, 不入库): <学段>/<年级>/<学科>/xxx.pdf
+├── scripts/            # 下载/转换工具(见 scripts/README.md)
+├── sh_edu/             # 教材 PDF 库(gitignore): <学段>/<年级>/<学科>/xxx.pdf
+└── txt/                # 教材文本库(同结构): 数学语文已转, 英语走视觉路线
 ```
 
 ## 教材下载

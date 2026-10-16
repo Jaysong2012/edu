@@ -9,9 +9,11 @@ edu/
 ├── booklist.json                    # smartedu 书目清单(contentId + PDF地址)
 ├── scripts/
 │   ├── download_books.py            # smartedu 官方教材批量下载
-│   ├── download_haoduoyun_book.py   # 好多电子课本网(haoduoyun.cc)整本下载, 合成 PDF
+│   ├── download_haoduoyun_book.py   # haoduoyun.cc 整本下载, 合成 PDF
+│   ├── pdf_to_text.py               # PDF 转文本(文字层提取 / 抠图给视觉模型)
 │   └── README.md                    # 本文档
-└── sh_edu/                          # 教材库: <学段>/<年级>/<学科>/xxx.pdf
+├── sh_edu/                          # 教材库: <学段>/<年级>/<学科>/xxx.pdf
+└── txt/                             # 文本库(与 sh_edu 同结构), 已转 17 本
 ```
 
 ## 使用方法
@@ -42,6 +44,29 @@ python3 scripts/download_haoduoyun_book.py \
 | 二年级 | `ky2a` | `jk2b` |
 
 注意：三~五年级英语用 smartedu 的沪教版(新课标)，低年级才是牛津上海版旧教材。
+
+**脚本三：PDF 转文本（出复习题/教学材料用）**
+
+```bash
+python3 scripts/pdf_to_text.py sh_edu/小学/四年级/数学/数学四年级上册.pdf   # 有文字层 → txt/
+python3 scripts/pdf_to_text.py sh_edu/小学/四年级/英语/英语四年级上册.pdf --images 12  # 纯图片 → 抠原图到 /tmp
+```
+
+**各科转换可行性（实测）**：
+
+| 学科 | 文字层 | 质量 | 出题路线 |
+|---|---|---|---|
+| 数学(沪教) | ✅ | 完美，算式公式干净 | 直接用 txt 出题 |
+| 语文 | ⚠️ | 汉字可用；拼音是特殊字体映射会乱(zhI/bF 这类)，不影响汉字内容 | txt 出题，低年级拼音题需要看原图 |
+| 英语(沪教+牛津) | ❌ | 整页高清图(2087×2949) | `--images 页码` 抠原图 → 视觉模型转录+出题 |
+
+**图片教材出题工作流**（已验证）：
+```bash
+python3 scripts/pdf_to_text.py <英语pdf> --images 12       # 抠出第12页原图
+~/.claude/skills/see-image/see_image.sh /tmp/pageimg-000.png \
+  "转录本页教学内容,并出3道复习题"                        # 视觉模型转录+出题
+```
+pdfimages 抠的是 PDF 内嵌原始图片（比渲染质量高）。
 
 ## 下载原理
 
@@ -81,6 +106,15 @@ python3 scripts/download_haoduoyun_book.py \
 | 图片是压缩图 | mmbiz.qpic.cn 的 640 宽 | URL 里 `/640` 换 `/0` 得到 1280 宽原图 |
 | 页面 UA 检测 | 桌面 UA 会 302 跳主站 | 请求带手机 UA |
 | 图片来源不统一 | 有的书走 1010pic.com, 有的走微信 CDN | 脚本按 `ebookPage('URL')` 逐页取，不依赖单一域名 |
+
+### PDF 转文本 (pdf_to_text.py)
+
+| 坑 | 现象 | 原因/解法 |
+|---|---|---|
+| 英语 PDF 有"文字层"假象 | pdftotext 出 1.8 万字符 | 全是每页重复的水印 `4ASH00152026秋备案`；判定要用水印清洗+连续字母计数，不能只看字符数 |
+| 字符类误判 | `[a-zA-Z ]` 算出 7000"内容" | 字符类里的空格把水印间隔也算上；改用 `[一-鿿]` 汉字数 + `[a-zA-Z]{2,}` 单词数 |
+| 语文拼音乱码 | zhI/bF/shG 等 | 教材拼音用特殊注音字体，编码映射不对；汉字正常，拼音题需视觉路线 |
+| 想渲染页面成图 | Quartz/PyMuPDF 都没装 | 不用渲染：`pdfimages -png -f N -l N` 直接抠 PDF 内嵌原图，质量最高 |
 
 ## 标签维度速查
 
