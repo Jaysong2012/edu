@@ -1,0 +1,12 @@
+# 教材 PDF 体积大(661MB+), 不入库, 用 scripts/download_books.py 随时可重新下载
+sh_edu/
+
+# playwright-cli 的快照/日志
+.playwright-cli/
+
+# Python
+__pycache__/
+*.pyc
+
+# 系统文件
+.DS_Store
