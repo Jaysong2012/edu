@@ -14,9 +14,10 @@ edu/
 ├── README.md
 ├── booklist.json       # smartedu 书目清单(contentId + PDF 地址), 由脚本维护
 ├── scripts/            # 下载/转换工具(见 scripts/README.md)
-├── sh_edu/             # 教材 PDF 库(gitignore): <学段>/<年级>/<学科>/xxx.pdf
-└── txt/                # 教材文本库(同结构): 数学语文已转, 英语走视觉路线
+└── sh_edu/             # 教材 PDF 库(gitignore): <学段>/<年级>/<学科>/xxx.pdf
 ```
+
+**出题方式**：不维护预转文本库。出题时现场提取内容——数学/语文走文字层（零误差），英语等图片型教材用 `pdf_to_text.py --images` 抠原图喂视觉模型（每次看原件，避免 OCR 误差沉淀）。
 
 ## 教材下载
 
